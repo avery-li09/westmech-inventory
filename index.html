@@ -159,6 +159,8 @@ textarea.in{min-height:64px;resize:vertical}
 .table td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
 .table tr.link{cursor:pointer}
 .table tr:last-child td{border-bottom:0}
+@media (max-width:600px){.table .cat{display:none}}
+@media (min-width:900px){.card{max-width:600px}}
 .wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;box-shadow:var(--sh-1),var(--hl)}
 .count-row{display:grid;grid-template-columns:1fr 64px 90px;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
 .count-row .in{min-height:40px;text-align:center;font-family:var(--mono);padding:4px}
@@ -279,7 +281,7 @@ textarea.in{min-height:64px;resize:vertical}
   // ---------- views ----------
   function vHome() {
     var recent = load(LS.recent, []).map(part).filter(Boolean).slice(0, 6);
-    var lowN = cat.parts.filter(function (p) { return p.active && onHand(p) <= p.threshold; }).length;
+    var lowN = cat.parts.filter(function (p) { return p.active && (p.tracked || pendingFor(p.part_id) !== 0) && onHand(p) <= p.threshold; }).length;
     var h = '<div class="search"><label class="sr" for="q">Search parts</label>' + ico('search') + '<input id="q" class="in" type="search" placeholder="Search parts, SKUs, bins" autocomplete="off"></div>';
     h += '<div id="results"></div>';
     h += '<div id="homeRest">';
@@ -383,8 +385,8 @@ textarea.in{min-height:64px;resize:vertical}
     ps.sort(sorters[sortKey] || sorters.low);
     var h = '<div class="section" style="padding-top:2px"><h1 style="font-size:22px">Stock</h1><span class="note">' + ps.length + ' parts</span></div>';
     h += '<div class="search" style="margin-bottom:10px"><label class="sr" for="sq">Filter</label>' + ico('search') + '<input id="sq" class="in" type="search" placeholder="Filter" autocomplete="off"></div>';
-    h += '<div class="wrap"><table class="table" id="stockT"><thead><tr><th data-k="name">Part</th><th data-k="bin">Bin</th><th data-k="cat">Category</th><th class="r" data-k="low">On hand</th><th class="r">Reorder at</th></tr></thead><tbody>';
-    h += ps.map(function (p) { return '<tr class="link" data-id="' + esc(p.part_id) + '" data-hay="' + esc((p.name + ' ' + p.sku + ' ' + p.bin_id + ' ' + p.category).toLowerCase()) + '"><td>' + esc(p.name) + '</td><td class="mono">' + esc(p.bin_id) + '</td><td>' + esc(p.category) + '</td><td class="r mono' + (p.oh <= p.threshold ? '" style="color:var(--bad);font-weight:600' : '') + '">' + p.oh + '</td><td class="r mono" style="color:var(--mute)">' + p.threshold + '</td></tr>'; }).join('');
+    h += '<div class="wrap"><table class="table" id="stockT"><thead><tr><th data-k="name">Part</th><th data-k="bin">Bin</th><th data-k="cat" class="cat">Category</th><th class="r" data-k="low">On hand</th><th class="r">Reorder at</th></tr></thead><tbody>';
+    h += ps.map(function (p) { return '<tr class="link" data-id="' + esc(p.part_id) + '" data-hay="' + esc((p.name + ' ' + p.sku + ' ' + p.bin_id + ' ' + p.category).toLowerCase()) + '"><td>' + esc(p.name) + '</td><td class="mono">' + esc(p.bin_id) + '</td><td class="cat">' + esc(p.category) + '</td><td class="r mono' + (p.oh <= p.threshold ? '" style="color:var(--bad);font-weight:600' : '') + '">' + p.oh + '</td><td class="r mono" style="color:var(--mute)">' + p.threshold + '</td></tr>'; }).join('');
     h += '</tbody></table></div>';
     view.innerHTML = h;
     $('stockT').onclick = function (e) { var th = e.target.closest('th[data-k]'); if (th) { sortKey = th.getAttribute('data-k'); vStock(); return; } var tr = e.target.closest('tr[data-id]'); if (tr) go('part=' + encodeURIComponent(tr.getAttribute('data-id'))); };
@@ -392,11 +394,14 @@ textarea.in{min-height:64px;resize:vertical}
   }
   function vBuy() {
     if (!needAdmin()) return;
-    var low = cat.parts.filter(function (p) { return p.active && onHand(p) <= p.threshold; }).sort(function (a, b) { return (onHand(a) - a.threshold) - (onHand(b) - b.threshold); });
-    var text = low.map(function (p) { return (p.threshold * 2 - onHand(p)) + ' x ' + p.name + (p.sku ? ' (SKU ' + p.sku + ')' : '') + ' — ' + onHand(p) + ' on hand'; }).join('\n');
+    var tracked = function (p) { return p.tracked || pendingFor(p.part_id) !== 0; };
+    var low = cat.parts.filter(function (p) { return p.active && tracked(p) && onHand(p) <= p.threshold; }).sort(function (a, b) { return (onHand(a) - a.threshold) - (onHand(b) - b.threshold); });
+    var untracked = cat.parts.filter(function (p) { return p.active && !tracked(p); }).length;
+    var text = low.map(function (p) { return (p.threshold * 2 - onHand(p)) + ' x ' + p.name + (p.sku ? ' (SKU ' + p.sku + ')' : '') + ', ' + onHand(p) + ' on hand'; }).join('\n');
     var h = '<div class="section" style="padding-top:2px"><h1 style="font-size:22px">Buy list</h1>' + (low.length ? '<button class="btn sm quiet press" type="button" id="copy">Copy as text</button>' : '') + '</div>';
-    h += '<p class="note" style="margin-bottom:12px">Everything at or below its reorder point. Suggested quantity brings each part to twice its threshold.</p>';
-    h += low.length ? '<div class="list">' + low.map(function (p) { return '<a class="row link press" href="./#part=' + encodeURIComponent(p.part_id) + '"><span class="l"><b>' + esc(p.name) + '</b><small>' + esc(p.bin_id) + (p.sku ? ' · SKU ' + esc(p.sku) : '') + ' · reorder at ' + p.threshold + '</small></span><span class="r"><span class="n low">' + onHand(p) + '</span>' + ico('chev') + '</span></a>'; }).join('') + '</div>' : '<p class="empty">Nothing to buy. Every part is above its reorder point.</p>';
+    h += '<p class="note" style="margin-bottom:12px">Everything counted or scanned that sits at or below its reorder point. The suggested quantity brings a part to twice its threshold.</p>';
+    h += low.length ? '<div class="list">' + low.map(function (p) { return '<a class="row link press" href="./#part=' + encodeURIComponent(p.part_id) + '"><span class="l"><b>' + esc(p.name) + '</b><small>' + esc(p.bin_id) + (p.sku ? ' · SKU ' + esc(p.sku) : '') + ' · reorder at ' + p.threshold + '</small></span><span class="r"><span class="n low">' + onHand(p) + '</span>' + ico('chev') + '</span></a>'; }).join('') + '</div>' : '<p class="empty">Nothing to buy among the parts that have been counted.</p>';
+    if (untracked) h += '<p class="note" style="margin-top:12px">' + untracked + ' part' + (untracked === 1 ? ' has' : 's have') + ' never been counted or scanned, so ' + (untracked === 1 ? 'it is' : 'they are') + ' not on this list yet. <a href="./#count" style="color:var(--blue-t);font-weight:600">Count a shelf</a>.</p>';
     view.innerHTML = h;
     if ($('copy')) $('copy').onclick = function () { navigator.clipboard.writeText(text).then(function () { toast('Copied ' + low.length + ' lines'); }, function () { toast('Could not copy on this phone'); }); };
   }
@@ -531,7 +536,7 @@ textarea.in{min-height:64px;resize:vertical}
   render();
   refreshCatalog();
   flush();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1').catch(function () {});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=2').catch(function () {});
 })();
 </script>
 </body>
