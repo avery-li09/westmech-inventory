@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WM Parts labels</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--sans:"Instrument Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",Consolas,monospace;--bg:#f3f4f7;--surf:#fdfdfe;--ink:#121418;--mute:#5b6170;--line:#e1e4ea;--line2:#cdd2db;--blue-t:#0a66c2;--blue-tint:#e8f2fc;--bad:#c23b2b}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--bg);font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--blue-t);outline-offset:2px;border-radius:4px}
+input,select,button{font:inherit;color:inherit}
+a{color:inherit}
+.bar{position:sticky;top:0;z-index:5;background:var(--surf);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar h1{font-size:16px;margin:0 12px 0 0;letter-spacing:-.02em}
+.bar label{display:inline-flex;align-items:center;gap:6px;font-weight:500;color:var(--mute);font-size:13px}
+.in{min-height:36px;padding:4px 10px;border:1px solid var(--line2);border-radius:7px;background:var(--surf);font-size:13.5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:7px;background:var(--blue-t);color:#fff;border:1px solid transparent;font-weight:600;font-size:13px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line2)}
+.btn:disabled{opacity:.45;cursor:default}
+.sp{flex:1}
+.note{color:var(--mute);font-size:12.5px;padding:0 16px 10px}
+.err{color:var(--bad);font-weight:500}
+.sheets{display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px 12px 60px}
+/* Avery 5160 / 5520 / 8160: US letter, 30 labels, 2.625in x 1in, 3 columns at a 2.75in pitch, top margin 0.5in, left 0.1875in */
+.page{width:8.5in;height:11in;background:#fff;box-shadow:0 2px 12px rgba(18,20,24,.12);padding:0.5in 0 0 0.1875in;position:relative;overflow:hidden}
+.grid{display:grid;grid-template-columns:repeat(3,2.625in);grid-auto-rows:1in;column-gap:0.125in;row-gap:0}
+.lab{width:2.625in;height:1in;display:grid;grid-template-columns:0.86in 1fr;gap:0.06in;padding:0.07in 0.1in 0.07in 0.09in;overflow:hidden;position:relative}
+.lab.cal{outline:1px dashed #888;outline-offset:-1px}
+.lab svg{width:0.86in;height:0.86in;display:block}
+.lab .t{display:flex;flex-direction:column;justify-content:center;min-width:0;gap:2px}
+.lab .name{font-weight:700;font-size:10pt;line-height:1.1;letter-spacing:-.01em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance}
+.lab .bin{font-family:var(--mono);font-size:11pt;font-weight:500;letter-spacing:-.01em}
+.lab .id{font-family:var(--mono);font-size:7pt;color:#555}
+.lab.shelf .name{font-size:14pt}
+@media print{
+  body{background:#fff}
+  .bar,.note{display:none}
+  .sheets{padding:0;gap:0}
+  .page{box-shadow:none;page-break-after:always;break-after:page;margin:0}
+  .page:last-child{page-break-after:auto}
+  @page{size:letter;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Labels</h1>
+  <label>Category <select id="cat" class="in"><option value="">All</option></select></label>
+  <label>Shelf <select id="shelf" class="in"><option value="">All</option></select></label>
+  <label><input type="checkbox" id="onlyNew" checked> Only never printed</label>
+  <label><input type="checkbox" id="withShelves"> Shelf labels too</label>
+  <span class="sp"></span>
+  <span id="count" class="note" style="padding:0"></span>
+  <button class="btn ghost" type="button" id="calib">Print an alignment test</button>
+  <button class="btn" type="button" id="print">Print</button>
+  <button class="btn ghost" type="button" id="mark" title="Stamps label_printed_at on every part shown">Mark these as printed</button>
+</div>
+<p class="note">Avery 5160, 5520 or 8160 sheets (30 per page), or plain paper cut along the label edges and taped over. Print at 100% with "fit to page" off. Run the alignment test on plain paper first and hold it against a label sheet. <span id="msg"></span></p>
+<div class="sheets" id="sheets"></div>
+<script src="qrcode.js"></script>
+<script>
+(function () {
+  'use strict';
+  var API = 'https://n8n.ambrosia-ai.org/webhook/';
+  var APP = 'https://avery-li09.github.io/westmech-inventory/';
+  var $ = function (id) { return document.getElementById(id); };
+  var cat = null, shown = [], shownBins = [], calibration = false;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function qr(text) {
+    var q = qrcode(0, 'M'); q.addData(text); q.make();
+    return q.createSvgTag({ cellSize: 2, margin: 0, scalable: true });
+  }
+  function me() { try { return JSON.parse(localStorage.getItem('wm_inv_me') || 'null'); } catch (e) { return null; } }
+  function build() {
+    if (!cat) return;
+    var c = $('cat').value, s = $('shelf').value, onlyNew = $('onlyNew').checked, withShelves = $('withShelves').checked;
+    var parts = cat.parts.filter(function (p) { return p.active && (!c || p.category === c) && (!s || String(p.bin_id).indexOf(s + '-') === 0) && (!onlyNew || !p.label_printed_at); })
+      .sort(function (a, b) { return String(a.bin_id).localeCompare(String(b.bin_id), undefined, { numeric: true }); });
+    var labels = parts.map(function (p) {
+      var url = APP + '?p=' + encodeURIComponent(p.part_id);
+      return '<div class="lab' + (calibration ? ' cal' : '') + '">' + (calibration ? '' : qr(url)) + '<div class="t"><div class="name">' + (calibration ? '' : esc(p.name)) + '</div><div class="bin">' + (calibration ? '' : esc(p.bin_id)) + '</div><div class="id">' + (calibration ? '' : esc(p.part_id)) + '</div></div></div>';
+    });
+    shown = parts.map(function (p) { return p.part_id; });
+    shownBins = [];
+    if (withShelves) {
+      var shelves = []; cat.bins.forEach(function (b) { if ((!s || b.shelf === s) && shelves.indexOf(b.shelf) < 0) shelves.push(b.shelf); }); shelves.sort();
+      shelves.forEach(function (sh) {
+        var url = APP + '?loc=' + encodeURIComponent(sh);
+        labels.push('<div class="lab shelf' + (calibration ? ' cal' : '') + '">' + (calibration ? '' : qr(url)) + '<div class="t"><div class="name">' + (calibration ? '' : 'Shelf ' + esc(sh.slice(1))) + '</div><div class="bin">' + (calibration ? '' : esc(sh)) + '</div><div class="id">' + (calibration ? '' : 'scan for what lives here') + '</div></div></div>');
+      });
+    }
+    if (calibration) { labels = []; for (var i = 0; i < 30; i++) labels.push('<div class="lab cal"><div class="t"><div class="id">' + (i + 1) + '</div></div></div>'); }
+    var pages = [];
+    for (var j = 0; j < labels.length; j += 30) pages.push('<div class="page"><div class="grid">' + labels.slice(j, j + 30).join('') + '</div></div>');
+    $('sheets').innerHTML = pages.join('') || '<p class="note">Nothing to print with these filters.</p>';
+    $('count').textContent = calibration ? 'Alignment test, 1 sheet' : labels.length + ' labels, ' + pages.length + ' sheet' + (pages.length === 1 ? '' : 's');
+    $('mark').disabled = calibration || !shown.length;
+  }
+  ['cat', 'shelf', 'onlyNew', 'withShelves'].forEach(function (id) { $(id).addEventListener('change', function () { calibration = false; build(); }); });
+  $('print').onclick = function () { calibration = false; build(); window.print(); };
+  $('calib').onclick = function () { calibration = true; build(); window.print(); calibration = false; setTimeout(build, 500); };
+  $('mark').onclick = function () {
+    var m = me();
+    if (!m || m.role !== 'admin') { $('msg').innerHTML = '<span class="err">Sign in as an admin in the app first (same phone or browser), then come back.</span>'; return; }
+    $('mark').disabled = true;
+    fetch(API + 'wm-inv-part', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: m.token, printed: shown, printed_bins: shownBins }) }).then(function (r) { return r.json(); }).then(function (r) {
+      if (!r.ok) throw new Error(r.reason || 'failed');
+      $('msg').textContent = 'Marked ' + shown.length + ' parts as printed.';
+      return fetch(API + 'wm-inv-catalog?cb=' + Date.now()).then(function (r) { return r.json(); }).then(function (c) { if (c.ok) { cat = c; try { localStorage.setItem('wm_inv_catalog', JSON.stringify(c)); } catch (e) {} build(); } });
+    }).catch(function (e) { $('msg').innerHTML = '<span class="err">Could not mark: ' + esc(e.message) + '</span>'; $('mark').disabled = false; });
+  };
+  fetch(API + 'wm-inv-catalog?cb=' + Date.now()).then(function (r) { return r.json(); }).then(function (c) {
+    if (!c.ok) throw new Error(c.reason || 'no catalog');
+    cat = c;
+    var cats = []; c.parts.forEach(function (p) { if (cats.indexOf(p.category) < 0) cats.push(p.category); }); cats.sort();
+    $('cat').innerHTML += cats.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+    var shelves = []; c.bins.forEach(function (b) { if (shelves.indexOf(b.shelf) < 0) shelves.push(b.shelf); }); shelves.sort();
+    $('shelf').innerHTML += shelves.map(function (x) { return '<option value="' + esc(x) + '">Shelf ' + esc(x.slice(1)) + '</option>'; }).join('');
+    build();
+  }).catch(function (e) { $('msg').innerHTML = '<span class="err">Could not load the parts list: ' + esc(e.message) + '</span>'; });
+})();
+</script>
+</body>
+</html>
