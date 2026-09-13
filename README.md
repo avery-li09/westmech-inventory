@@ -9,7 +9,7 @@ Live at https://avery-li09.github.io/westmech-inventory/
 - This repo is the app: static HTML on GitHub Pages, installable on a phone, works offline for scanning (writes queue and send when back online).
 - The data is a Google Sheet, "Western Mechatronics — Inventory" (Parts, Transactions, Stock, Coaches, Bins, Alerts). Transactions is an append-only ledger; on hand is the sum of a part's rows, so two coaches scanning at once can never overwrite each other.
 - The API is an n8n workflow ("WM Inventory API") at `https://n8n.ambrosia-ai.org/webhook/wm-inv-*`. A second workflow ("WM Inventory Alerts") emails the Sunday digest.
-- Labels: `labels.html` prints Avery 5160 / 5520 / 8160 sheets (30 per page) or plain paper. Each label's QR is a plain URL, so the native camera app reads it; no scanner is built into the app.
+- Labels: `labels.html` prints three sizes, picked from the Size menu (or `?size=`): bin, Avery 5160 / 5520 / 8160 (2.625 x 1 in, 30 a sheet, 0.86 in QR); package, Avery 5195 / 8195 (1.75 x 0.67 in, 60 a sheet, 0.57 in QR); mini, Avery 5167 / 8167 (1.75 x 0.5 in, 80 a sheet, 0.43 in QR, laser printer). Plain paper cut to size works for any of them. Each label's QR is a plain URL (`?p=42` opens WM-0042; the short form keeps the code at 33 modules), so the native camera app reads it; no scanner is built into the app.
 
 ## Sign-in
 
