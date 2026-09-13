@@ -247,7 +247,7 @@ textarea.in{min-height:64px;resize:vertical}
   // ---------- routing ----------
   function route() {
     var q = new URLSearchParams(location.search);
-    if (q.get('p')) { history.replaceState(null, '', './#part=' + encodeURIComponent(q.get('p'))); }
+    if (q.get('p')) { var pid = q.get('p'); if (/^\d{1,4}$/.test(pid)) pid = 'WM-' + ('0000' + pid).slice(-4); history.replaceState(null, '', './#part=' + encodeURIComponent(pid)); }
     else if (q.get('loc')) { history.replaceState(null, '', './#loc=' + encodeURIComponent(q.get('loc'))); }
     var h = location.hash.replace(/^#/, '');
     var m = h.match(/^([a-z]+)(?:=(.*))?$/);
@@ -536,7 +536,7 @@ textarea.in{min-height:64px;resize:vertical}
   render();
   refreshCatalog();
   flush();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=2').catch(function () {});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3').catch(function () {});
 })();
 </script>
 </body>

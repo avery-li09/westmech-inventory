@@ -27,17 +27,45 @@ a{color:inherit}
 .note{color:var(--mute);font-size:12.5px;padding:0 16px 10px}
 .err{color:var(--bad);font-weight:500}
 .sheets{display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px 12px 60px}
-/* Avery 5160 / 5520 / 8160: US letter, 30 labels, 2.625in x 1in, 3 columns at a 2.75in pitch, top margin 0.5in, left 0.1875in */
-.page{width:8.5in;height:11in;background:#fff;box-shadow:0 2px 12px rgba(18,20,24,.12);padding:0.5in 0 0 0.1875in;position:relative;overflow:hidden}
-.grid{display:grid;grid-template-columns:repeat(3,2.625in);grid-auto-rows:1in;column-gap:0.125in;row-gap:0}
-.lab{width:2.625in;height:1in;display:grid;grid-template-columns:0.86in 1fr;gap:0.06in;padding:0.07in 0.1in 0.07in 0.09in;overflow:hidden;position:relative}
+/* Every size is a US letter sheet. The page padding is the sheet's top and left margin, the grid is the label pitch. */
+.page{width:8.5in;height:11in;background:#fff;box-shadow:0 2px 12px rgba(18,20,24,.12);position:relative;overflow:hidden}
+.grid{display:grid;row-gap:0}
+.lab{display:grid;overflow:hidden;position:relative}
 .lab.cal{outline:1px dashed #888;outline-offset:-1px}
-.lab svg{width:0.86in;height:0.86in;display:block}
+.lab svg{display:block}
 .lab .t{display:flex;flex-direction:column;justify-content:center;min-width:0;gap:2px}
-.lab .name{font-weight:700;font-size:10pt;line-height:1.1;letter-spacing:-.01em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance}
-.lab .bin{font-family:var(--mono);font-size:11pt;font-weight:500;letter-spacing:-.01em}
-.lab .id{font-family:var(--mono);font-size:7pt;color:#555}
-.lab.shelf .name{font-size:14pt}
+.lab .name{font-weight:700;line-height:1.1;letter-spacing:-.01em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance}
+.lab .bin{font-family:var(--mono);font-weight:500;letter-spacing:-.01em}
+.lab .id{font-family:var(--mono);color:#555}
+/* bin: Avery 5160 / 5520 / 8160, 30 per sheet, 2.625in x 1in, 3 across at a 2.75in pitch, margins 0.5in top and 0.1875in left */
+.page.bin{padding:0.5in 0 0 0.1875in}
+.page.bin .grid{grid-template-columns:repeat(3,2.625in);grid-auto-rows:1in;column-gap:0.125in}
+.page.bin .lab{width:2.625in;height:1in;grid-template-columns:0.86in 1fr;gap:0.06in;padding:0.07in 0.1in 0.07in 0.09in}
+.page.bin .lab svg{width:0.86in;height:0.86in}
+.page.bin .name{font-size:10pt}
+.page.bin .bin{font-size:11pt}
+.page.bin .id{font-size:7pt}
+.page.bin .lab.shelf .name{font-size:14pt}
+/* package: Avery 5195 / 8195, 60 per sheet, 1.75in x 0.667in, 4 across at a 2.0625in pitch, margins 0.5in top and 0.3in left */
+.page.pkg{padding:0.5in 0 0 0.3in}
+.page.pkg .grid{grid-template-columns:repeat(4,1.75in);grid-auto-rows:0.6667in;column-gap:0.3125in}
+.page.pkg .lab{width:1.75in;height:0.6667in;grid-template-columns:0.57in 1fr;gap:0.05in;padding:0.048in 0.06in 0.048in 0.06in}
+.page.pkg .lab svg{width:0.57in;height:0.57in}
+.page.pkg .t{gap:1px}
+.page.pkg .name{font-size:6.5pt}
+.page.pkg .bin{font-size:8pt}
+.page.pkg .id{font-size:5.5pt}
+.page.pkg .lab.shelf .name{font-size:9pt}
+/* mini: Avery 5167 / 8167, 80 per sheet, 1.75in x 0.5in, 4 across at a 2.0625in pitch, margins 0.5in top and 0.3in left */
+.page.mini{padding:0.5in 0 0 0.3in}
+.page.mini .grid{grid-template-columns:repeat(4,1.75in);grid-auto-rows:0.5in;column-gap:0.3125in}
+.page.mini .lab{width:1.75in;height:0.5in;grid-template-columns:0.43in 1fr;gap:0.04in;padding:0.035in 0.05in 0.035in 0.05in}
+.page.mini .lab svg{width:0.43in;height:0.43in}
+.page.mini .t{gap:0}
+.page.mini .name{font-size:5.5pt;-webkit-line-clamp:2}
+.page.mini .bin{font-size:7pt}
+.page.mini .id{font-size:5pt}
+.page.mini .lab.shelf .name{font-size:8pt}
 @media print{
   body{background:#fff}
   .bar,.note{display:none}
@@ -51,6 +79,11 @@ a{color:inherit}
 <body>
 <div class="bar">
   <h1>Labels</h1>
+  <label>Size <select id="size" class="in">
+    <option value="bin">Bin, 2.625 x 1 in (Avery 5160, 30 a sheet)</option>
+    <option value="pkg">Package, 1.75 x 0.67 in (Avery 5195, 60 a sheet)</option>
+    <option value="mini">Mini, 1.75 x 0.5 in (Avery 5167, 80 a sheet)</option>
+  </select></label>
   <label>Category <select id="cat" class="in"><option value="">All</option></select></label>
   <label>Shelf <select id="shelf" class="in"><option value="">All</option></select></label>
   <label><input type="checkbox" id="onlyNew" checked> Only never printed</label>
@@ -61,7 +94,8 @@ a{color:inherit}
   <button class="btn" type="button" id="print">Print</button>
   <button class="btn ghost" type="button" id="mark" title="Stamps label_printed_at on every part shown">Mark these as printed</button>
 </div>
-<p class="note">Avery 5160, 5520 or 8160 sheets (30 per page), or plain paper cut along the label edges and taped over. Print at 100% with "fit to page" off. Run the alignment test on plain paper first and hold it against a label sheet. <span id="msg"></span></p>
+<p class="note" id="sizeNote"></p>
+<p class="note">Print at 100% with "fit to page" off. Run the alignment test on plain paper first and hold it against a label sheet. Plain paper cut along the label edges and taped over works for any size. <span id="msg"></span></p>
 <div class="sheets" id="sheets"></div>
 <script src="qrcode.js"></script>
 <script>
@@ -69,6 +103,11 @@ a{color:inherit}
   'use strict';
   var API = 'https://n8n.ambrosia-ai.org/webhook/';
   var APP = 'https://avery-li09.github.io/westmech-inventory/';
+  var SIZES = {
+    bin:  { per: 30, note: 'Bin labels: Avery 5160, 5520 or 8160 sheets. The QR is 0.86 in, easy to scan from arm’s length. For bin faces and shelf edges.' },
+    pkg:  { per: 60, note: 'Package labels: Avery 5195 or 8195 sheets (return-address size). The QR is 0.57 in; hold the phone about 10 cm away. For the bag or box a part ships in.' },
+    mini: { per: 80, note: 'Mini labels: Avery 5167 or 8167 sheets. The QR is 0.43 in, the smallest that still scans on a phone camera at close range; print on a laser printer, not inkjet, and keep the print at 100%. For small bags.' }
+  };
   var $ = function (id) { return document.getElementById(id); };
   var cat = null, shown = [], shownBins = [], calibration = false;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -76,15 +115,20 @@ a{color:inherit}
     var q = qrcode(0, 'M'); q.addData(text); q.make();
     return q.createSvgTag({ cellSize: 2, margin: 0, scalable: true });
   }
+  // The label URL carries the bare number (?p=42 opens WM-0042): six fewer characters keeps the code one QR version smaller,
+  // which is the difference between scanning and not on the mini size.
+  function partUrl(id) { var m = /^WM-0*(\d+)$/.exec(id); return APP + '?p=' + (m ? m[1] : encodeURIComponent(id)); }
   function me() { try { return JSON.parse(localStorage.getItem('wm_inv_me') || 'null'); } catch (e) { return null; } }
+  function size() { return $('size').value in SIZES ? $('size').value : 'bin'; }
   function build() {
     if (!cat) return;
+    var sz = size(), per = SIZES[sz].per;
+    $('sizeNote').textContent = SIZES[sz].note;
     var c = $('cat').value, s = $('shelf').value, onlyNew = $('onlyNew').checked, withShelves = $('withShelves').checked;
     var parts = cat.parts.filter(function (p) { return p.active && (!c || p.category === c) && (!s || String(p.bin_id).indexOf(s + '-') === 0) && (!onlyNew || !p.label_printed_at); })
       .sort(function (a, b) { return String(a.bin_id).localeCompare(String(b.bin_id), undefined, { numeric: true }); });
     var labels = parts.map(function (p) {
-      var url = APP + '?p=' + encodeURIComponent(p.part_id);
-      return '<div class="lab' + (calibration ? ' cal' : '') + '">' + (calibration ? '' : qr(url)) + '<div class="t"><div class="name">' + (calibration ? '' : esc(p.name)) + '</div><div class="bin">' + (calibration ? '' : esc(p.bin_id)) + '</div><div class="id">' + (calibration ? '' : esc(p.part_id)) + '</div></div></div>';
+      return '<div class="lab' + (calibration ? ' cal' : '') + '">' + (calibration ? '' : qr(partUrl(p.part_id))) + '<div class="t"><div class="name">' + (calibration ? '' : esc(p.name)) + '</div><div class="bin">' + (calibration ? '' : esc(p.bin_id)) + '</div><div class="id">' + (calibration ? '' : esc(p.part_id)) + '</div></div></div>';
     });
     shown = parts.map(function (p) { return p.part_id; });
     shownBins = [];
@@ -95,14 +139,14 @@ a{color:inherit}
         labels.push('<div class="lab shelf' + (calibration ? ' cal' : '') + '">' + (calibration ? '' : qr(url)) + '<div class="t"><div class="name">' + (calibration ? '' : 'Shelf ' + esc(sh.slice(1))) + '</div><div class="bin">' + (calibration ? '' : esc(sh)) + '</div><div class="id">' + (calibration ? '' : 'scan for what lives here') + '</div></div></div>');
       });
     }
-    if (calibration) { labels = []; for (var i = 0; i < 30; i++) labels.push('<div class="lab cal"><div class="t"><div class="id">' + (i + 1) + '</div></div></div>'); }
+    if (calibration) { labels = []; for (var i = 0; i < per; i++) labels.push('<div class="lab cal"><div class="t"><div class="id">' + (i + 1) + '</div></div></div>'); }
     var pages = [];
-    for (var j = 0; j < labels.length; j += 30) pages.push('<div class="page"><div class="grid">' + labels.slice(j, j + 30).join('') + '</div></div>');
+    for (var j = 0; j < labels.length; j += per) pages.push('<div class="page ' + sz + '"><div class="grid">' + labels.slice(j, j + per).join('') + '</div></div>');
     $('sheets').innerHTML = pages.join('') || '<p class="note">Nothing to print with these filters.</p>';
     $('count').textContent = calibration ? 'Alignment test, 1 sheet' : labels.length + ' labels, ' + pages.length + ' sheet' + (pages.length === 1 ? '' : 's');
     $('mark').disabled = calibration || !shown.length;
   }
-  ['cat', 'shelf', 'onlyNew', 'withShelves'].forEach(function (id) { $(id).addEventListener('change', function () { calibration = false; build(); }); });
+  ['size', 'cat', 'shelf', 'onlyNew', 'withShelves'].forEach(function (id) { $(id).addEventListener('change', function () { calibration = false; build(); }); });
   $('print').onclick = function () { calibration = false; build(); window.print(); };
   $('calib').onclick = function () { calibration = true; build(); window.print(); calibration = false; setTimeout(build, 500); };
   $('mark').onclick = function () {
@@ -115,6 +159,7 @@ a{color:inherit}
       return fetch(API + 'wm-inv-catalog?cb=' + Date.now()).then(function (r) { return r.json(); }).then(function (c) { if (c.ok) { cat = c; try { localStorage.setItem('wm_inv_catalog', JSON.stringify(c)); } catch (e) {} build(); } });
     }).catch(function (e) { $('msg').innerHTML = '<span class="err">Could not mark: ' + esc(e.message) + '</span>'; $('mark').disabled = false; });
   };
+  var want = new URLSearchParams(location.search).get('size'); if (want && want in SIZES) $('size').value = want;
   fetch(API + 'wm-inv-catalog?cb=' + Date.now()).then(function (r) { return r.json(); }).then(function (c) {
     if (!c.ok) throw new Error(c.reason || 'no catalog');
     cat = c;

@@ -1,7 +1,7 @@
 // WM Parts service worker. Navigations go network first so a bad cache can never pin a phone to an old build;
 // the API (a different origin) is never touched here, so the app's own fetch logic decides what is fresh.
 // Bump CACHE on every deploy (GitHub Pages sets no cache headers, so index.html registers sw.js?v=N as well).
-var CACHE = 'wmparts-v2';
+var CACHE = 'wmparts-v3';
 var ASSETS = ['./', './index.html', './labels.html', './manifest.webmanifest', './qrcode.js',
               './icon-192.png', './icon-512.png', './icon-180.png', './logo.png'];
 
